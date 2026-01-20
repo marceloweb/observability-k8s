@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Jaeger admin/metrics port (porta 14269 é comum em all-in-one)
+  # Se não funcionar, o Jaeger pode não estar expondo métricas Prometheus
+  - job_name: 'jaeger-metrics'
+    static_configs:
+      - targets: ['jaeger:14269']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'jaeger_.*'
+        action: keep
+
+  # Jaeger collector também pode expor métricas
+  - job_name: 'jaeger-collector'
+    static_configs:
+      - targets: ['jaeger:14268']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'jaeger_.*'
+        action: keep
+
+  # Gateway service
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+    metrics_path: '/metrics'
+
+  # Products service  
+  - job_name: 'products'
+    static_configs:
+      - targets: ['products:8081']
+    metrics_path: '/metrics'
