@@ -178,46 +178,6 @@ Grafana permite correlacionar dados dos 3 pilares:
 2. **Buscar métricas no Prometheus** → Ver CPU/memória naquele momento
 3. **Buscar logs no Loki** → Ver erros/warnings relacionados
 
-## 🔄 Estrutura de um Trace Completo
-
-Quando você faz `curl http://localhost:8080/products`, o trace mostra:
-
-```
-📍 Trace ID: abc123...
-├─ 🌐 gateway.getProducts [200ms total]
-│  ├─ Tags:
-│  │  ├─ http.method: GET
-│  │  ├─ http.url: /products
-│  │  └─ service: gateway-service
-│  │
-│  ├─ Event: "Processando requisição GET /products"
-│  │
-│  └─ 📡 http.call.products-service [150ms]
-│     ├─ Tags:
-│     │  ├─ http.url: http://products:8081/products
-│     │  └─ peer.service: products-service
-│     │
-│     └─ 📦 products.getAll [140ms]
-│        ├─ Tags:
-│        │  ├─ http.method: GET
-│        │  ├─ products.count: 4
-│        │  └─ service: products-service
-│        │
-│        ├─ 🗄️ database.query [100ms]
-│        │  ├─ Tags:
-│        │  │  ├─ db.system: postgresql
-│        │  │  ├─ db.statement: SELECT * FROM products
-│        │  │  └─ db.operation: SELECT
-│        │  └─ Event: "fetching products from database"
-│        │
-│        ├─ 🔍 products.filter [30ms]
-│        │  ├─ Tags:
-│        │  │  └─ filter.type: price-range
-│        │  └─ Event: "filtering products"
-│        │
-│        └─ Event: "response sent successfully"
-```
-
 ## 💡 Conceitos Importantes
 
 ### **OpenTelemetry (Moderno)**
@@ -292,35 +252,6 @@ Gateway Service
 - **Docker & Docker Compose**: Containerização
 - **Bridge Network**: Comunicação entre containers
 
-## 📁 Estrutura do Projeto
-
-```
-.
-├── docker-compose.yml           # Orquestração de todos os serviços
-├── gateway/
-│   ├── Dockerfile
-│   ├── go.mod                   # Dependências OpenTelemetry
-│   └── main.go                  # Código com OTLP exporter
-├── products/
-│   ├── Dockerfile
-│   ├── go.mod                   # Dependências OpenTelemetry
-│   └── main.go                  # Código com OTLP exporter
-├── prometheus/
-│   └── prometheus.yml           # Config de scraping
-├── promtail/
-│   └── promtail-config.yml      # Config de coleta de logs
-└── grafana/
-    └── provisioning/
-        ├── datasources/
-        │   └── datasources.yml  # Jaeger, Prometheus, Loki
-        └── dashboards/
-            ├── dashboard.yml
-            └── dashboards/      # Dashboards pré-configurados
-                ├── overview.json
-                ├── services-detail.json
-                └── observability-dashboard.json
-```
-
 ## 🛠️ Endpoints Disponíveis
 
 ### **Aplicação**
@@ -381,49 +312,6 @@ curl -G "http://localhost:3100/loki/api/v1/query_range" \
 2. Visualize arquitetura real vs esperada
 3. Identifique dependências não documentadas
 4. Otimize caminhos críticos
-
-## 🔍 Troubleshooting
-
-### **Serviços não aparecem no Jaeger?**
-```bash
-# Verifique se serviços estão enviando traces
-docker logs gateway 2>&1 | grep -i otel
-docker logs products 2>&1 | grep -i otel
-
-# Deve mostrar:
-# ✅ OpenTelemetry inicializado com sucesso!
-
-# Verifique API do Jaeger
-curl http://localhost:16686/api/services
-```
-
-### **Métricas não aparecem no Prometheus?**
-```bash
-# Verifique targets
-curl http://localhost:9090/api/v1/targets
-
-# Teste endpoint de métricas
-curl http://localhost:8080/metrics
-curl http://localhost:8081/metrics
-```
-
-### **Logs não aparecem no Loki?**
-```bash
-# Verifique Promtail
-docker logs promtail 2>&1 | tail -20
-
-# Verifique labels no Loki
-curl http://localhost:3100/loki/api/v1/labels
-```
-
-### **Dashboard não carrega no Grafana?**
-```bash
-# Reinicie o Grafana
-docker-compose restart grafana
-
-# Verifique logs
-docker logs grafana
-```
 
 ## 🛑 Parar os serviços
 
@@ -489,4 +377,4 @@ Para expandir este projeto:
 
 **Desenvolvido para demonstrar observabilidade moderna com OpenTelemetry** 🔭
 
-Dúvidas? Abra uma issue ou consulte a documentação oficial do OpenTelemetry!
+Dúvidas ou sugestões? Fale comigo pelo meu Linkedin: https://www.linkedin.com/in/marceloweb/
