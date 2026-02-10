@@ -1,0 +1,508 @@
+# Default values for observability-stack.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  namespace: observability
+  storageClass: standard
+  imagePullPolicy: IfNotPresent
+
+#############################################
+# Tempo - Distributed Tracing
+#############################################
+tempo:
+  enabled: true
+  name: tempo
+  image:
+    repository: grafana/tempo
+    tag: "2.9.0"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    ports:
+      http: 3200
+      otlpGrpc: 4317
+      otlpHttp: 4318
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  
+  persistence:
+    enabled: false
+    size: 10Gi
+    storageClass: ""
+  
+  config:
+    auth_enabled: false
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /tmp/tempo/blocks
+
+#############################################
+# Prometheus - Metrics Collection
+#############################################
+prometheus:
+  enabled: true
+  name: prometheus
+  image:
+    repository: prom/prometheus
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    port: 9090
+  
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  
+  retention:
+    time: 15d
+  
+  config:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+    external_labels:
+      cluster: local
+      environment: development
+  
+  scrapeConfigs:
+    - job_name: prometheus
+      static_configs:
+        - targets:
+            - localhost:9090
+    
+    - job_name: gateway
+      static_configs:
+        - targets:
+            - gateway:8080
+    
+    - job_name: products
+      static_configs:
+        - targets:
+            - products:8081
+
+#############################################
+# Alertmanager - Alert Management
+#############################################
+alertmanager:
+  enabled: true
+  name: alertmanager
+  image:
+    repository: prom/alertmanager
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    port: 9093
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+  
+  config:
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'default'
+    
+    receivers:
+      - name: 'default'
+        # Configure webhook, email, slack, etc here
+
+#############################################
+# Loki - Log Aggregation
+#############################################
+loki:
+  enabled: true
+  name: loki
+  image:
+    repository: grafana/loki
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    port: 3100
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+#############################################
+# Promtail - Log Collection (DaemonSet)
+#############################################
+promtail:
+  enabled: true
+  name: promtail
+  image:
+    repository: grafana/promtail
+    tag: "latest"
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  config:
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+    
+    positions:
+      filename: /tmp/positions.yaml
+    
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+    
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_label_app
+            target_label: app
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+
+#############################################
+# Grafana - Visualization Platform
+#############################################
+grafana:
+  enabled: true
+  name: grafana
+  image:
+    repository: grafana/grafana
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30000
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  
+  admin:
+    user: admin
+    password: admin
+  
+  env:
+    GF_SECURITY_ADMIN_USER: admin
+    GF_SECURITY_ADMIN_PASSWORD: admin
+    GF_USERS_ALLOW_SIGN_UP: "false"
+    GF_FEATURE_TOGGLES_ENABLE: "tempoSearch,tempoServiceGraph"
+  
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus:9090
+      access: proxy
+      isDefault: true
+      jsonData:
+        timeInterval: 30s
+    
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+      jsonData:
+        maxLines: 1000
+    
+    - name: Tempo
+      type: tempo
+      url: http://tempo:3200
+      access: proxy
+      jsonData:
+        httpMethod: GET
+        serviceMap:
+          datasourceUid: prometheus
+
+#############################################
+# OpenTelemetry Collector
+#############################################
+otelCollector:
+  enabled: true
+  name: otel-collector
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    ports:
+      otlpGrpc: 4317
+      otlpHttp: 4318
+      metrics: 8888
+      prometheus: 8889
+      health: 13133
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 1024
+      
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+    
+    exporters:
+      otlp/tempo:
+        endpoint: tempo:4317
+        tls:
+          insecure: true
+      
+      prometheus:
+        endpoint: 0.0.0.0:8889
+      
+      loki:
+        endpoint: http://loki:3100/loki/api/v1/push
+    
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp/tempo]
+        
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]
+        
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [loki]
+
+#############################################
+# Gateway Service
+#############################################
+gateway:
+  enabled: true
+  name: gateway
+  image:
+    repository: seu-registry/gateway
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30080
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  
+  env:
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    OTEL_SERVICE_NAME: gateway
+    OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
+    PRODUCTS_SERVICE_URL: http://products:8081
+  
+  healthcheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 40
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+#############################################
+# Products Service
+#############################################
+products:
+  enabled: true
+  name: products
+  image:
+    repository: seu-registry/products
+    tag: "latest"
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+    port: 8081
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  
+  env:
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    OTEL_SERVICE_NAME: products
+    OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
+  
+  healthcheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 40
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+#############################################
+# Ingress Configuration (Optional)
+#############################################
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  
+  hosts:
+    grafana:
+      host: grafana.local
+      paths:
+        - path: /
+          pathType: Prefix
+    
+    gateway:
+      host: gateway.local
+      paths:
+        - path: /
+          pathType: Prefix
+  
+  tls:
+    enabled: false
+    secretName: observability-tls
+
+#############################################
+# ServiceMonitor for Prometheus Operator (Optional)
+#############################################
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+
+#############################################
+# RBAC Configuration
+#############################################
+rbac:
+  create: true
+
+#############################################
+# Security Context
+#############################################
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+
+#############################################
+# Node Selector, Tolerations, and Affinity
+#############################################
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

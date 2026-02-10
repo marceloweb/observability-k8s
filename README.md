@@ -1,380 +1,378 @@
-# 🔭 Exemplo de Observabilidade com OpenTelemetry + Jaeger
+# 🔭 Observability Stack - Kubernetes Helm Chart
 
-Este projeto demonstra uma **stack completa de observabilidade** usando **OpenTelemetry** (padrão CNCF) para rastreamento distribuído, métricas e logs entre microsserviços.
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Grafana](https://img.shields.io/badge/grafana-%23F46800.svg?style=for-the-badge&logo=grafana&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
 
-## 🏗️ Arquitetura
+## 📖 Sobre o Projeto
 
-### **Microsserviços**
-- **Gateway Service** (porta 8080): Serviço que recebe requisições externas e orquestra chamadas
-- **Products Service** (porta 8081): Serviço que gerencia produtos (API interna)
+Stack completa de observabilidade para microserviços, implementando os três pilares fundamentais:
 
-### **Stack de Observabilidade**
+- **📊 Métricas**: Prometheus + Alertmanager
+- **📝 Logs**: Loki + Promtail
+- **🔍 Traces**: Tempo + OpenTelemetry Collector
 
-#### 📊 **Traces (Rastreamento Distribuído)**
-- **Jaeger All-in-One** (UI: 16686, OTLP: 4318): Plataforma completa para distributed tracing
-  - **Collector**: Recebe traces via OTLP (OpenTelemetry Protocol)
-  - **Storage**: Armazena traces em memória (in-memory)
-  - **Query API**: API para consulta de traces
-  - **UI Web**: Interface visual para análise de traces
+Inclui Grafana como plataforma unificada de visualização e dois microserviços de exemplo (Gateway e Products) já instrumentados com OpenTelemetry.
 
-#### 📈 **Metrics (Métricas)**
-- **Prometheus** (porta 9090): Sistema de monitoramento e time-series database
-  - Coleta métricas HTTP dos serviços via scraping
-  - Armazena métricas em TSDB (Time Series Database)
-  - Query API para consultas PromQL
-  - UI para exploração de métricas
+## ✨ Componentes
 
-#### 📝 **Logs (Agregação de Logs)**
-- **Loki** (porta 3100): Sistema de agregação de logs inspirado no Prometheus
-  - Armazena logs de forma eficiente
-  - Indexação apenas de labels (não do conteúdo)
-  - Query API para consultas LogQL
-  
-- **Promtail**: Agente de coleta de logs
-  - Tail de logs dos containers Docker
-  - Service Discovery automático
-  - Adiciona labels automaticamente
-  - Push de logs para Loki
+### Observabilidade
 
-#### 🎨 **Visualization (Visualização Unificada)**
-- **Grafana** (porta 3000): Plataforma de visualização e analytics
-  - Dashboards pré-configurados
-  - Integração com 3 datasources: Jaeger, Prometheus, Loki
-  - Correlação automática entre traces, métricas e logs
-  - Auto-refresh e alerting
+| Componente      | Versão  | Porta | Descrição                        |
+|-----------------|---------|-------|----------------------------------|
+| Grafana         | latest  | 3000  | Dashboards e visualização        |
+| Prometheus      | latest  | 9090  | Coleta e armazenamento métricas  |
+| Alertmanager    | latest  | 9093  | Gerenciamento de alertas         |
+| Loki            | latest  | 3100  | Agregação de logs                |
+| Promtail        | latest  | -     | Coleta de logs (DaemonSet)       |
+| Tempo           | 2.9.0   | 3200  | Distributed tracing              |
+| OTel Collector  | latest  | 4317  | Coleta telemetria OpenTelemetry  |
 
-## 🚀 Como executar
+### Aplicações para testes
 
-### 1️⃣ **Iniciar todos os serviços:**
+| Serviço  | Porta | Descrição                    |
+|----------|-------|------------------------------|
+| Gateway  | 8080  | API Gateway instrumentado    |
+| Products | 8081  | Serviço de produtos exemplo  |
+
+## 📋 Pré-requisitos
+
+### Software Necessário
+
 ```bash
-docker-compose up --build
+# Kubernetes Local
+- Minikube >= 1.37.0
+- kubectl >= 1.34.0
+
+# Package Manager
+- Helm >= 4.1.0
+
 ```
 
-Aguarde até ver as mensagens:
-```
-✅ OpenTelemetry inicializado com sucesso!
-🚀 Gateway Service rodando na porta 8080...
-🚀 Products Service rodando na porta 8081...
-```
+### Instalação dos Pré-requisitos
 
-### 2️⃣ **Testar a aplicação:**
+#### 🐧 Linux
+
 ```bash
-# Fazer algumas requisições para gerar traces
-curl http://localhost:8080/products
+# Minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-# Ou gerar múltiplas requisições
-for i in {1..20}; do curl http://localhost:8080/products; sleep 0.5; done
+# kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-### 3️⃣ **Acessar as interfaces de observabilidade:**
+## 🚀 Quick Start
 
-| Interface | URL | Credenciais | Descrição |
-|-----------|-----|-------------|-----------|
-| **Jaeger UI** | http://localhost:16686 | - | Visualizar traces distribuídos |
-| **Prometheus** | http://localhost:9090 | - | Explorar métricas |
-| **Grafana** | http://localhost:3000 | admin/admin | Dashboards unificados |
+### 1. Iniciar Minikube
 
-## 🔍 Utilizando o Jaeger UI
+```bash
+# Iniciar cluster com recursos adequados
+minikube start --cpus=4 --memory=8192 --disk-size=20g
 
-### **Básico:**
-1. Acesse http://localhost:16686
-2. No dropdown **"Service"**, selecione `gateway-service` ou `products-service`
-3. Clique em **"Find Traces"**
-4. Clique em um trace específico para ver detalhes completos
-
-### **O que observar nos traces:**
-
-- **🎯 Spans**: Cada operação gera um span (segmento de tempo)
-  - `gateway.getProducts`: Span principal do gateway
-  - `http.call.products-service`: Chamada HTTP entre serviços
-  - `products.getAll`: Processamento no serviço de produtos
-  - `database.query`: Simulação de query no banco (100ms)
-  - `products.filter`: Simulação de filtro (30ms)
-
-- **⏱️ Duração**: Tempo de execução de cada operação
-  - Visualização em timeline
-  - Identificação de gargalos
-  - Análise de latência
-
-- **🏷️ Tags**: Metadados estruturados adicionados aos spans
-  - `http.method`: GET, POST, etc.
-  - `http.url`: URL completa da requisição
-  - `http.status_code`: 200, 404, 500, etc.
-  - `service.name`: Nome do serviço
-  - `db.system`: postgresql (simulado)
-  - `db.statement`: SQL query (simulado)
-
-- **📋 Logs/Events**: Eventos registrados durante a execução
-  - "fetching products from database"
-  - "filtering products"
-  - "products processed"
-  - "response sent successfully"
-
-- **🔗 Relações**: Como os spans se relacionam
-  - Parent-child: Hierarquia de chamadas
-  - Propagação de contexto entre serviços
-  - Trace completo end-to-end
-
-### **Recursos Avançados:**
-- **Dependency Graph**: Visualiza dependências entre serviços
-- **Compare Traces**: Compara múltiplos traces lado a lado
-- **Deep Linking**: Link direto para um trace específico
-- **System Architecture**: Mapa de arquitetura gerado automaticamente
-
-## 📊 Utilizando o Prometheus
-
-1. Acesse http://localhost:9090
-2. Clique em **"Graph"**
-3. Teste estas queries:
-
-```promql
-# Taxa de requisições por segundo
-rate(promhttp_metric_handler_requests_total[1m])
-
-# Uso de memória
-go_memstats_alloc_bytes
-
-# Goroutines ativas
-go_goroutines
-
-# Serviços UP
-up{job=~"gateway|products"}
+# Habilitar addons úteis
+minikube addons enable metrics-server
+minikube addons enable ingress
 ```
 
-## 🎨 Utilizando o Grafana
+### 2. Instalar a Stack
 
-### **Acessar:**
-1. Abra http://localhost:3000
-2. Login: `admin` / Senha: `admin`
-3. (Opcional) Troque a senha ou clique "Skip"
+```bash
+# Clone o repositório
+git clone <repository-url>
+cd observability-stack
 
-### **Dashboards Disponíveis:**
+# Instalar usando Helm
+helm install obs-stack ./charts/observability-stack \
+  -n observability \
+  --create-namespace \
+  -f values/values-local.yaml
 
-#### 📈 **Microservices Overview**
-- Visão geral de todos os serviços
-- Request rate por serviço
-- Status (UP/DOWN)
-- Uso de memória e goroutines
-- Logs em tempo real
-
-#### 📊 **Services Detail Metrics**
-- Métricas detalhadas de performance
-- HTTP request rate e total de requisições
-- Uso detalhado de memória (allocated vs system)
-- Goroutines e threads ativos
-- Taxa de Garbage Collection
-
-#### 🔍 **Observability Dashboard (OpenTelemetry + Jaeger)**
-- Foco em observabilidade moderna
-- Status dos serviços rastreados
-- Request rate e totais
-- Logs dos serviços
-- Link direto para Jaeger UI
-
-### **Explorando Correlações:**
-Grafana permite correlacionar dados dos 3 pilares:
-
-1. **Ver um trace no Jaeger** → Identificar timestamp
-2. **Buscar métricas no Prometheus** → Ver CPU/memória naquele momento
-3. **Buscar logs no Loki** → Ver erros/warnings relacionados
-
-## 💡 Conceitos Importantes
-
-### **OpenTelemetry (Moderno)**
-- **Padrão CNCF**: Cloud Native Computing Foundation standard
-- **Vendor-neutral**: Funciona com Jaeger, Zipkin, Datadog, etc.
-- **OTLP Protocol**: OpenTelemetry Protocol (HTTP/gRPC)
-- **SDK**: Biblioteca única para traces, metrics e logs
-- **Auto-instrumentation**: Propagação automática de contexto
-
-### **Distributed Tracing**
-- **Trace**: Representa uma requisição completa através de todos os serviços
-- **Span**: Representa uma operação individual dentro de um trace
-  - Server Span: Recebe requisição
-  - Client Span: Faz requisição externa
-  - Internal Span: Operação interna (DB, cache, etc.)
-- **Trace ID**: Identificador único do trace (propagado entre serviços)
-- **Span ID**: Identificador único do span
-
-### **Context Propagation**
-Como o contexto do trace é passado entre serviços:
-```
-Gateway Service
-  └─ HTTP Request Headers:
-      ├─ traceparent: 00-{trace-id}-{span-id}-01
-      └─ tracestate: ...
-          ↓
-     Products Service (extrai contexto e continua o trace)
 ```
 
-### **Três Pilares da Observabilidade**
-1. **📊 Metrics (Métricas)**: O QUE está acontecendo
-   - Request rate, latência, erro rate
-   - Métricas de sistema (CPU, memória)
+### 3. Verificar Instalação
+
+```bash
+# Verificar status
+helm status obs-stack -n observability
+
+# Ver pods
+kubectl get pods -n observability
+
+# Aguardar todos os pods ficarem prontos
+kubectl wait --for=condition=ready pod --all -n observability --timeout=300s
+```
+
+### 4. Acessar as Interfaces
+
+#### Opção 1: Port-Forward Manual
+
+```bash
+# Grafana
+kubectl port-forward -n observability svc/grafana 3000:3000
+
+# Prometheus
+kubectl port-forward -n observability svc/prometheus 9090:9090
+
+# Gateway (aplicação exemplo)
+kubectl port-forward -n observability svc/gateway 8080:8080
+```
+
+#### Opção 2: Usando Script
+
+```bash
+./scripts/port-forward.sh
+```
+
+#### Opção 3: Usando Makefile
+
+```bash
+make port-forward
+```
+
+### 5. Credenciais Padrão
+
+| Serviço     | URL                   | Usuário | Senha |
+|-------------|-----------------------|---------|-------|
+| Grafana     | http://localhost:3000 | admin   | admin |
+| Prometheus  | http://localhost:9090 | -       | -     |
+| Alertmanager| http://localhost:9093 | -       | -     |
+
+## 🎯 Testando a Stack
+
+### Gerar Tráfego de Teste
+
+```bash
+# Fazer requisições ao gateway
+for i in {1..100}; do
+  curl http://localhost:8080/products
+  sleep 1
+done
+```
+
+### Verificar Dados
+
+1. **Métricas** - Prometheus (http://localhost:9090)
+   ```promql
+   # Requisições HTTP
+   rate(http_requests_total[5m])
    
-2. **🔍 Traces (Rastreamento)**: ONDE está o problema
-   - Qual serviço está lento?
-   - Qual operação falhou?
-   - Dependências entre serviços
-   
-3. **📝 Logs (Registros)**: POR QUE aconteceu
-   - Mensagens de erro detalhadas
-   - Stack traces
-   - Contexto da aplicação
+   # Latência P95
+   histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+   ```
 
-### **Sampling**
-- **AlwaysSample**: 100% dos traces são coletados (usado neste projeto)
-- **ProbabilitySample**: Amostra probabilística (ex: 10%)
-- **RateLimiting**: Limite de traces por segundo
+2. **Logs** - Grafana > Explore > Loki
+   ```logql
+   {namespace="observability", app="gateway"}
+   ```
 
-### **Tags vs Logs vs Events**
-- **Tags**: Metadados estruturados (indexados, queryable)
-- **Logs**: Eventos temporais com timestamp
-- **Events**: Alias para logs no OpenTelemetry
+3. **Traces** - Grafana > Explore > Tempo
+   - Buscar por service name: `gateway` ou `products`
+   - Ver trace completo da requisição
 
-## 🔧 Tecnologias Utilizadas
+## 🔧 Configuração
 
-### **Backend**
-- **Go 1.23**: Linguagem de programação
-- **OpenTelemetry SDK v1.32.0**: Instrumentação moderna
-- **OTLP Exporter**: Exportador HTTP para Jaeger
-- **Prometheus Client**: Exposição de métricas
-- **net/http**: Servidor HTTP padrão
-
-### **Observabilidade**
-- **Jaeger**: Distributed tracing (CNCF project)
-- **Prometheus**: Metrics & monitoring (CNCF project)
-- **Loki**: Log aggregation
-- **Promtail**: Log collector
-- **Grafana**: Visualization platform
-
-### **Infraestrutura**
-- **Docker & Docker Compose**: Containerização
-- **Bridge Network**: Comunicação entre containers
-
-## 🛠️ Endpoints Disponíveis
-
-### **Aplicação**
-```bash
-# Gateway
-curl http://localhost:8080/products   # Lista produtos
-curl http://localhost:8080/health     # Health check
-curl http://localhost:8080/metrics    # Métricas Prometheus
-
-# Products (interno)
-curl http://localhost:8081/products   # Lista produtos
-curl http://localhost:8081/health     # Health check
-curl http://localhost:8081/metrics    # Métricas Prometheus
-```
-
-### **Observabilidade - APIs**
-```bash
-# Jaeger - Listar serviços
-curl http://localhost:16686/api/services
-
-# Jaeger - Buscar traces
-curl "http://localhost:16686/api/traces?service=gateway-service&limit=10"
-
-# Prometheus - Query
-curl "http://localhost:9090/api/v1/query?query=up"
-
-# Loki - Labels
-curl http://localhost:3100/loki/api/v1/labels
-
-# Loki - Query
-curl -G "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={container_name="gateway"}'
-```
-
-## 🎯 Casos de Uso
-
-### **1. Identificar Gargalos de Performance**
-1. Acesse Jaeger UI
-2. Encontre traces com alta latência
-3. Analise qual span está demorando mais
-4. Identifique o serviço/operação problemática
-
-### **2. Debug de Erros em Produção**
-1. Veja erro nos logs (Grafana → Loki)
-2. Identifique o timestamp do erro
-3. Busque o trace correspondente no Jaeger
-4. Analise toda a cadeia de chamadas
-5. Veja tags de erro e stack traces
-
-### **3. Monitoramento de SLOs**
-1. Use Prometheus para métricas de SLI
-2. Configure alertas no Grafana
-3. Correlacione com traces quando alertas disparam
-4. Análise de causa raiz com logs
-
-### **4. Análise de Dependências**
-1. Use Jaeger Dependency Graph
-2. Visualize arquitetura real vs esperada
-3. Identifique dependências não documentadas
-4. Otimize caminhos críticos
-
-## 🛑 Parar os serviços
+### Personalizar Valores
 
 ```bash
-# Para e remove containers
-docker-compose down
+# Editar values
+vim values/values-local.yaml
 
-# Para, remove containers e volumes (perde dados)
-docker-compose down -v
+# Aplicar mudanças
+helm upgrade obs-stack ./charts/observability-stack \
+  -n observability \
+  -f values/values-local.yaml
 ```
 
-## 📚 Recursos Adicionais
+### Principais Configurações
 
-### **Documentação Oficial**
-- [OpenTelemetry](https://opentelemetry.io/docs/)
-- [Jaeger](https://www.jaegertracing.io/docs/)
-- [Prometheus](https://prometheus.io/docs/)
-- [Grafana](https://grafana.com/docs/)
-- [Loki](https://grafana.com/docs/loki/)
+```yaml
+# values.yaml (exemplo)
+grafana:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 10Gi
 
-### **Especificações**
-- [OTLP Protocol](https://opentelemetry.io/docs/specs/otlp/)
-- [W3C Trace Context](https://www.w3.org/TR/trace-context/)
-- [Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/)
+prometheus:
+  retention: 15d
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
-### **Tutoriais**
-- [OpenTelemetry Go Getting Started](https://opentelemetry.io/docs/languages/go/getting-started/)
-- [Jaeger Getting Started](https://www.jaegertracing.io/docs/getting-started/)
-- [Prometheus First Steps](https://prometheus.io/docs/introduction/first_steps/)
+gateway:
+  replicas: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+```
 
-## 🎓 Observações e Boas Práticas
+## 📊 Dashboards Grafana
 
-### **Neste Projeto de Demonstração:**
-- ✅ 100% sampling (todos os traces coletados)
-- ✅ Latências simuladas (100ms DB, 30ms filtro)
-- ✅ Armazenamento in-memory (dados perdidos ao reiniciar)
-- ✅ Single-node deployment (todos serviços em um host)
+Após instalação, importe os dashboards pré-configurados:
 
-### **Em Produção, Considere:**
-- 🎯 **Sampling inteligente**: 1-10% dos traces
-- 💾 **Storage persistente**: Elasticsearch, Cassandra
-- 🔒 **Segurança**: Autenticação, TLS, RBAC
-- 📊 **High availability**: Múltiplas réplicas
-- ⚡ **Performance**: Async exporters, batching
-- 🔔 **Alerting**: Integração com PagerDuty, Slack
-- 📈 **Retention policies**: Retenção de dados configurável
-- 🌍 **Service mesh**: Istio/Linkerd para observabilidade automática
+1. Acesse Grafana (http://localhost:3000)
+2. Navegue para Dashboards > Browse
+3. Os seguintes dashboards estarão disponíveis:
+   - **Kubernetes Cluster Monitoring**
+   - **Application Metrics**
+   - **Logs Dashboard**
+   - **Distributed Tracing**
 
-## 🚀 Próximos Passos
+Ou importe manualmente de `docs/dashboards/`
 
-Para expandir este projeto:
+## 🛠️ Comandos Úteis
 
-1. **Adicionar Redis** para demonstrar cache tracing
-2. **Adicionar PostgreSQL** com queries reais rastreadas
-3. **Implementar Circuit Breaker** com spans de fallback
-4. **Adicionar autenticação** e rastrear token propagation
-5. **Implementar rate limiting** com traces
-6. **Adicionar filas** (RabbitMQ/Kafka) com async tracing
-7. **Deploy em Kubernetes** com service mesh
-8. **Adicionar testes** de integração com tracing
+```bash
+# Ver logs de um serviço
+kubectl logs -n observability -l app=grafana -f
+
+# Descrever um pod
+kubectl describe pod -n observability <pod-name>
+
+# Executar comando em pod
+kubectl exec -it -n observability <pod-name> -- /bin/sh
+
+# Ver recursos consumidos
+kubectl top pods -n observability
+
+# Reiniciar deployment
+kubectl rollout restart deployment/grafana -n observability
+
+# Ver eventos
+kubectl get events -n observability --sort-by='.lastTimestamp'
+```
+
+## 🔄 Atualização
+
+```bash
+# Atualizar chart
+helm upgrade obs-stack ./charts/observability-stack \
+  -n observability \
+  -f values/values-local.yaml
+
+# Ver histórico de releases
+helm history obs-stack -n observability
+
+# Rollback se necessário
+helm rollback obs-stack <revision> -n observability
+```
+
+## 🗑️ Desinstalação
+
+```bash
+# Desinstalar release
+helm uninstall obs-stack -n observability
+
+# Remover namespace (opcional)
+kubectl delete namespace observability
+
+# Ou usando Makefile
+make uninstall
+
+# Parar minikube
+minikube stop
+
+# Deletar cluster (cuidado!)
+minikube delete
+```
+
+## 🐛 Troubleshooting
+
+### Pods não iniciam
+
+```bash
+# Verificar eventos
+kubectl get events -n observability --sort-by='.lastTimestamp'
+
+# Descrever pod com problema
+kubectl describe pod -n observability <pod-name>
+
+# Ver logs
+kubectl logs -n observability <pod-name>
+```
+
+### Problemas de Recursos
+
+```bash
+# Verificar recursos do nó
+kubectl top nodes
+
+# Verificar recursos dos pods
+kubectl top pods -n observability
+
+# Aumentar recursos do Minikube
+minikube stop
+minikube delete
+minikube start --cpus=6 --memory=12288
+```
+
+### PVC Pendente
+
+```bash
+# Verificar PVCs
+kubectl get pvc -n observability
+
+# Verificar StorageClass
+kubectl get storageclass
+
+# Se necessário, usar hostPath (apenas local)
+# Editar values.yaml e definir storageClass: standard
+```
+
+### Grafana sem dados
+
+1. Verificar datasources: Configuration > Data Sources
+2. Testar conexão com Prometheus/Loki/Tempo
+3. Verificar se serviços estão rodando:
+   ```bash
+   kubectl get svc -n observability
+   ```
+
+Para mais detalhes, consulte [docs/troubleshooting.md](docs/troubleshooting.md)
+
+## 📚 Documentação Adicional
+
+- [Arquitetura Detalhada](docs/architecture.md)
+- [Guia de Troubleshooting](docs/troubleshooting.md)
+- [Customização de Dashboards](docs/dashboards/)
+- [Helm Chart Values](charts/observability-stack/values.yaml)
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor:
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 👥 Autor
+
+- Marcelo Lopes Oliveira - [@marceloweb](https://www.linkedin.com/in/marceloweb/)
+
+## 🙏 Agradecimentos
+
+- [Grafana Labs](https://grafana.com/)
+- [Prometheus](https://prometheus.io/)
+- [OpenTelemetry](https://opentelemetry.io/)
+- Comunidade Kubernetes
 
 ---
 
-**Desenvolvido para demonstrar observabilidade moderna com OpenTelemetry** 🔭
-
-Dúvidas ou sugestões? Fale comigo pelo meu Linkedin: https://www.linkedin.com/in/marceloweb/
+⭐ Se este projeto foi útil, considere dar uma estrela!
