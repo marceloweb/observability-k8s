@@ -272,9 +272,9 @@ serviceMonitor:
   enabled: false
 
 #############################################
-# Security Context - Relaxed for local
+# Security Context - Permissive for local
 #############################################
 securityContext:
   runAsNonRoot: false
-  runAsUser: 1000
-  fsGroup: 1000
+  runAsUser: 10001
+  fsGroup: 10001

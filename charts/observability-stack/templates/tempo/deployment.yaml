@@ -18,10 +18,10 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmaps/tempo-config.yaml") . | sha256sum }}
     spec:
-      {{- if .Values.securityContext }}
       securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
-      {{- end }}
+        fsGroup: 10001
+        runAsUser: 10001
+        runAsNonRoot: false
       containers:
       - name: tempo
         image: "{{ .Values.tempo.image.repository }}:{{ .Values.tempo.image.tag }}"
@@ -67,6 +67,12 @@ spec:
           failureThreshold: 3
         resources:
           {{- toYaml .Values.tempo.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
       volumes:
       - name: config
         configMap:
@@ -92,4 +98,3 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 {{- end }}
-
