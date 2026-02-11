@@ -142,7 +142,7 @@ grafana:
     password: admin
 
 #############################################
-# OpenTelemetry Collector - Reduced resources
+# OpenTelemetry Collector - FIXED
 #############################################
 otelCollector:
   enabled: true
@@ -158,6 +158,51 @@ otelCollector:
     limits:
       cpu: 200m
       memory: 128Mi
+  
+  # Configuração corrigida com debug exporter
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 1024
+      
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 25
+    
+    exporters:
+      debug:
+        verbosity: detailed
+      
+      otlp/tempo:
+        endpoint: tempo:4317
+        tls:
+          insecure: true
+      
+      prometheus:
+        endpoint: 0.0.0.0:8889
+        namespace: otel
+    
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [debug, otlp/tempo]
+        
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [debug, prometheus]
 
 #############################################
 # Gateway Service - Local development
@@ -179,6 +224,12 @@ gateway:
       cpu: 200m
       memory: 128Mi
   
+  env:
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    OTEL_SERVICE_NAME: gateway
+    OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
+    PRODUCTS_SERVICE_URL: http://products:8081
+  
   autoscaling:
     enabled: false
 
@@ -199,6 +250,11 @@ products:
     limits:
       cpu: 200m
       memory: 128Mi
+  
+  env:
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    OTEL_SERVICE_NAME: products
+    OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
   
   autoscaling:
     enabled: false

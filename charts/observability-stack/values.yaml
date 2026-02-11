@@ -331,9 +331,13 @@ otelCollector:
       
       memory_limiter:
         check_interval: 1s
-        limit_mib: 400
+        limit_percentage: 75
+        spike_limit_percentage: 25
     
     exporters:
+      debug:
+        verbosity: detailed
+      
       otlp/tempo:
         endpoint: tempo:4317
         tls:
@@ -341,26 +345,19 @@ otelCollector:
       
       prometheus:
         endpoint: 0.0.0.0:8889
-      
-      loki:
-        endpoint: http://loki:3100/loki/api/v1/push
+        namespace: otel
     
     service:
       pipelines:
         traces:
           receivers: [otlp]
           processors: [memory_limiter, batch]
-          exporters: [otlp/tempo]
+          exporters: [debug, otlp/tempo]
         
         metrics:
           receivers: [otlp]
           processors: [memory_limiter, batch]
-          exporters: [prometheus]
-        
-        logs:
-          receivers: [otlp]
-          processors: [memory_limiter, batch]
-          exporters: [loki]
+          exporters: [debug, prometheus]
 
 #############################################
 # Gateway Service
