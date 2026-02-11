@@ -1,0 +1,89 @@
+{{- if .Values.otelCollector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.otelCollector.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.otelCollector.name "type" "telemetry" "context" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.otelCollector.replicas }}
+  selector:
+    matchLabels:
+      {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.otelCollector.name "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.otelCollector.name "context" .) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps/otel-collector-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.otelCollector.name }}
+      {{- if .Values.securityContext }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: otel-collector
+        image: "{{ .Values.otelCollector.image.repository }}:{{ .Values.otelCollector.image.tag }}"
+        imagePullPolicy: {{ include "observability-stack.imagePullPolicy" . }}
+        command:
+        - /otelcol-contrib
+        args:
+        - --config=/etc/otel-collector-config.yaml
+        ports:
+        - name: otlp-grpc
+          containerPort: {{ .Values.otelCollector.service.ports.otlpGrpc }}
+          protocol: TCP
+        - name: otlp-http
+          containerPort: {{ .Values.otelCollector.service.ports.otlpHttp }}
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.otelCollector.service.ports.metrics }}
+          protocol: TCP
+        - name: prometheus
+          containerPort: {{ .Values.otelCollector.service.ports.prometheus }}
+          protocol: TCP
+        - name: health
+          containerPort: {{ .Values.otelCollector.service.ports.health }}
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: otel-collector-config.yaml
+        livenessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.otelCollector.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+

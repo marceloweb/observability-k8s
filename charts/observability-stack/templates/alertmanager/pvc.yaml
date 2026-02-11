@@ -1,0 +1,21 @@
+{{- if and .Values.alertmanager.enabled .Values.alertmanager.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-pvc
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.alertmanager.name "type" "monitoring" "context" .) | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.alertmanager.persistence.size }}
+  {{- if .Values.alertmanager.persistence.storageClass }}
+  storageClassName: {{ .Values.alertmanager.persistence.storageClass }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+{{- end }}
+

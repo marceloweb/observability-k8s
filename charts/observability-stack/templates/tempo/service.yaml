@@ -1,0 +1,27 @@
+{{- if .Values.tempo.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.tempo.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.tempo.name "type" "tracing" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.tempo.service.type }}
+  ports:
+  - port: {{ .Values.tempo.service.ports.http }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: {{ .Values.tempo.service.ports.otlpGrpc }}
+    targetPort: otlp-grpc
+    protocol: TCP
+    name: otlp-grpc
+  - port: {{ .Values.tempo.service.ports.otlpHttp }}
+    targetPort: otlp-http
+    protocol: TCP
+    name: otlp-http
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.tempo.name "context" .) | nindent 4 }}
+{{- end }}
+

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.labels" . | nindent 4 }}
+    name: {{ include "observability-stack.namespace" . }}
+  annotations:
+    helm.sh/resource-policy: keep

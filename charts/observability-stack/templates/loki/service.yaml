@@ -1,0 +1,23 @@
+{{- if .Values.loki.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.loki.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.loki.name "type" "logging" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.loki.service.type }}
+  ports:
+  - port: {{ .Values.loki.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9095
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.loki.name "context" .) | nindent 4 }}
+{{- end }}
+

@@ -1,0 +1,34 @@
+{{- if .Values.otelCollector.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.otelCollector.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.otelCollector.name "type" "telemetry" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.otelCollector.service.type }}
+  ports:
+  - port: {{ .Values.otelCollector.service.ports.otlpGrpc }}
+    targetPort: otlp-grpc
+    protocol: TCP
+    name: otlp-grpc
+  - port: {{ .Values.otelCollector.service.ports.otlpHttp }}
+    targetPort: otlp-http
+    protocol: TCP
+    name: otlp-http
+  - port: {{ .Values.otelCollector.service.ports.metrics }}
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  - port: {{ .Values.otelCollector.service.ports.prometheus }}
+    targetPort: prometheus
+    protocol: TCP
+    name: prometheus
+  - port: {{ .Values.otelCollector.service.ports.health }}
+    targetPort: health
+    protocol: TCP
+    name: health
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.otelCollector.name "context" .) | nindent 4 }}
+{{- end }}

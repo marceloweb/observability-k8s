@@ -1,0 +1,22 @@
+{{- if .Values.alertmanager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.alertmanager.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.alertmanager.name "type" "monitoring" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.alertmanager.service.type }}
+  ports:
+  - port: {{ .Values.alertmanager.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+    {{- if and (eq .Values.alertmanager.service.type "NodePort") .Values.alertmanager.service.nodePort }}
+    nodePort: {{ .Values.alertmanager.service.nodePort }}
+    {{- end }}
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.alertmanager.name "context" .) | nindent 4 }}
+{{- end }}
+

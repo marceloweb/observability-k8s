@@ -1,0 +1,21 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.grafana.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.grafana.name "type" "visualization" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.grafana.service.type }}
+  ports:
+  - port: {{ .Values.grafana.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+    {{- if and (eq .Values.grafana.service.type "NodePort") .Values.grafana.service.nodePort }}
+    nodePort: {{ .Values.grafana.service.nodePort }}
+    {{- end }}
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.grafana.name "context" .) | nindent 4 }}
+{{- end }}

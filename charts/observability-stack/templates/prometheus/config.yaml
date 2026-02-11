@@ -1,0 +1,44 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.prometheus.name "type" "monitoring" "context" .) | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.prometheus.config.scrape_interval }}
+      evaluation_interval: {{ .Values.prometheus.config.evaluation_interval }}
+      external_labels:
+        {{- toYaml .Values.prometheus.config.external_labels | nindent 8 }}
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              {{- if .Values.alertmanager.enabled }}
+              - {{ .Values.alertmanager.name }}:{{ .Values.alertmanager.service.port }}
+              {{- end }}
+
+    rule_files:
+      - /etc/prometheus/alerts.yml
+
+    scrape_configs:
+      {{- range .Values.prometheus.scrapeConfigs }}
+      - job_name: {{ .job_name }}
+        {{- if .static_configs }}
+        static_configs:
+          {{- toYaml .static_configs | nindent 10 }}
+        {{- end }}
+        {{- if .kubernetes_sd_configs }}
+        kubernetes_sd_configs:
+          {{- toYaml .kubernetes_sd_configs | nindent 10 }}
+        {{- end }}
+        {{- if .relabel_configs }}
+        relabel_configs:
+          {{- toYaml .relabel_configs | nindent 10 }}
+        {{- end }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,29 @@
+{{- if and .Values.promtail.enabled .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.promtail.name }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.promtail.name "type" "logging" "context" .) | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/proxy
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+{{- end }}

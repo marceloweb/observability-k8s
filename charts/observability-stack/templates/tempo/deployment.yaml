@@ -1,0 +1,95 @@
+{{- if .Values.tempo.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.tempo.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.tempo.name "type" "tracing" "context" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.tempo.replicas }}
+  selector:
+    matchLabels:
+      {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.tempo.name "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.tempo.name "context" .) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps/tempo-config.yaml") . | sha256sum }}
+    spec:
+      {{- if .Values.securityContext }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: tempo
+        image: "{{ .Values.tempo.image.repository }}:{{ .Values.tempo.image.tag }}"
+        imagePullPolicy: {{ include "observability-stack.imagePullPolicy" . }}
+        args:
+        - -config.file=/etc/tempo.yaml
+        ports:
+        - name: http
+          containerPort: {{ .Values.tempo.service.ports.http }}
+          protocol: TCP
+        - name: otlp-grpc
+          containerPort: {{ .Values.tempo.service.ports.otlpGrpc }}
+          protocol: TCP
+        - name: otlp-http
+          containerPort: {{ .Values.tempo.service.ports.otlpHttp }}
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/tempo.yaml
+          subPath: tempo.yaml
+        {{- if .Values.tempo.persistence.enabled }}
+        - name: tempo-storage
+          mountPath: /tmp/tempo
+        {{- else }}
+        - name: tempo-tmpfs
+          mountPath: /tmp/tempo
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.tempo.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: tempo-config
+      {{- if .Values.tempo.persistence.enabled }}
+      - name: tempo-storage
+        persistentVolumeClaim:
+          claimName: tempo-pvc
+      {{- else }}
+      - name: tempo-tmpfs
+        emptyDir: {}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+

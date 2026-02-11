@@ -1,0 +1,224 @@
+# Values for local Minikube environment
+# Override default values.yaml for local development
+
+global:
+  namespace: observability
+  storageClass: standard
+  imagePullPolicy: IfNotPresent
+
+#############################################
+# Tempo - Reduced resources for local
+#############################################
+tempo:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  persistence:
+    enabled: false  # Disable persistence for faster startup
+
+#############################################
+# Prometheus - Reduced retention and resources
+#############################################
+prometheus:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 9090
+    nodePort: 30090
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  
+  persistence:
+    enabled: true
+    size: 5Gi  # Smaller size for local
+  
+  retention:
+    time: 7d  # Reduced retention
+
+#############################################
+# Alertmanager - Minimal resources
+#############################################
+alertmanager:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 9093
+    nodePort: 30093
+  
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  
+  persistence:
+    enabled: false
+
+#############################################
+# Loki - Reduced resources
+#############################################
+loki:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+
+#############################################
+# Promtail - Minimal resources
+#############################################
+promtail:
+  enabled: true
+  
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+#############################################
+# Grafana - NodePort for easy access
+#############################################
+grafana:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30000
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  persistence:
+    enabled: true
+    size: 2Gi
+  
+  admin:
+    user: admin
+    password: admin
+
+#############################################
+# OpenTelemetry Collector - Reduced resources
+#############################################
+otelCollector:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+#############################################
+# Gateway Service - Local development
+#############################################
+gateway:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30080
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+
+#############################################
+# Products Service - Local development
+#############################################
+products:
+  enabled: true
+  replicas: 1
+  
+  service:
+    type: ClusterIP
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+
+#############################################
+# Ingress - Disabled for local
+#############################################
+ingress:
+  enabled: false
+
+#############################################
+# ServiceMonitor - Disabled for local
+#############################################
+serviceMonitor:
+  enabled: false
+
+#############################################
+# Security Context - Relaxed for local
+#############################################
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 1000
+  fsGroup: 1000

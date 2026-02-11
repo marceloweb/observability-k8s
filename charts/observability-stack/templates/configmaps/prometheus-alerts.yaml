@@ -1,0 +1,86 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.prometheus.name "type" "monitoring" "context" .) | nindent 4 }}
+data:
+  alerts.yml: |
+    groups:
+    - name: observability_alerts
+      interval: 30s
+      rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (sum(container_memory_working_set_bytes{namespace="{{ include "observability-stack.namespace" . }}"}) 
+          BY (pod) / sum(container_spec_memory_limit_bytes{namespace="{{ include "observability-stack.namespace" . }}"}) 
+          BY (pod) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "High memory usage detected"
+          description: "Pod {{`{{ $labels.pod }}`}} memory usage is above 80%"
+
+      - alert: HighCPUUsage
+        expr: |
+          sum(rate(container_cpu_usage_seconds_total{namespace="{{ include "observability-stack.namespace" . }}"}[5m])) 
+          BY (pod) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Pod {{`{{ $labels.pod }}`}} CPU usage is above 80%"
+
+      - alert: PodRestart
+        expr: |
+          rate(kube_pod_container_status_restarts_total{namespace="{{ include "observability-stack.namespace" . }}"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "Pod restart detected"
+          description: "Pod {{`{{ $labels.pod }}`}} has restarted"
+
+      - alert: ServiceDown
+        expr: up{namespace="{{ include "observability-stack.namespace" . }}"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "Service is down"
+          description: "Service {{`{{ $labels.job }}`}} is down"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5..", namespace="{{ include "observability-stack.namespace" . }}"}[5m])) 
+          BY (job) / sum(rate(http_requests_total{namespace="{{ include "observability-stack.namespace" . }}"}[5m])) 
+          BY (job) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "High error rate detected"
+          description: "Service {{`{{ $labels.job }}`}} has error rate above 5%"
+
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket{namespace="{{ include "observability-stack.namespace" . }}"}[5m])) 
+            BY (le, job)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          namespace: {{ include "observability-stack.namespace" . }}
+        annotations:
+          summary: "Slow response time detected"
+          description: "Service {{`{{ $labels.job }}`}} p95 latency is above 1s"
+{{- end }}

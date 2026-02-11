@@ -1,0 +1,83 @@
+{{- if .Values.promtail.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.promtail.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.promtail.name "type" "logging" "context" .) | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.promtail.name "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.promtail.name "context" .) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps/promtail-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.promtail.name }}
+      containers:
+      - name: promtail
+        image: "{{ .Values.promtail.image.repository }}:{{ .Values.promtail.image.tag }}"
+        imagePullPolicy: {{ include "observability-stack.imagePullPolicy" . }}
+        args:
+        - -config.file=/etc/promtail/config.yml
+        ports:
+        - name: http-metrics
+          containerPort: 9080
+          protocol: TCP
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /etc/promtail
+        - name: run
+          mountPath: /run/promtail
+        - name: pods
+          mountPath: /var/log/pods
+          readOnly: true
+        - name: docker
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        resources:
+          {{- toYaml .Values.promtail.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+      volumes:
+      - name: config
+        configMap:
+          name: promtail-config
+      - name: run
+        hostPath:
+          path: /run/promtail
+          type: DirectoryOrCreate
+      - name: pods
+        hostPath:
+          path: /var/log/pods
+          type: Directory
+      - name: docker
+        hostPath:
+          path: /var/lib/docker/containers
+          type: Directory
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

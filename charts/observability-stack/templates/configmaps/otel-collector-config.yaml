@@ -1,0 +1,39 @@
+{{- if .Values.otelCollector.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.otelCollector.name "type" "telemetry" "context" .) | nindent 4 }}
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      {{- with .Values.otelCollector.config.receivers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+
+    processors:
+      {{- with .Values.otelCollector.config.processors }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+
+    exporters:
+      {{- with .Values.otelCollector.config.exporters }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:{{ .Values.otelCollector.service.ports.health }}
+      pprof:
+        endpoint: 0.0.0.0:1777
+
+    service:
+      extensions: [health_check, pprof]
+      pipelines:
+        {{- with .Values.otelCollector.config.service.pipelines }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}
+

@@ -1,0 +1,15 @@
+{{- if .Values.tempo.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.tempo.name "type" "tracing" "context" .) | nindent 4 }}
+data:
+  tempo.yaml: |
+    {{- with .Values.tempo.config }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+

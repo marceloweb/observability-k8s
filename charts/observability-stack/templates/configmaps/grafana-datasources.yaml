@@ -1,0 +1,28 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.grafana.name "type" "visualization" "context" .) | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    
+    datasources:
+    {{- range .Values.grafana.datasources }}
+    - name: {{ .name }}
+      type: {{ .type }}
+      access: {{ .access }}
+      url: {{ .url }}
+      {{- if .isDefault }}
+      isDefault: {{ .isDefault }}
+      {{- end }}
+      {{- if .jsonData }}
+      jsonData:
+        {{- toYaml .jsonData | nindent 8 }}
+      {{- end }}
+      editable: true
+    {{- end }}
+{{- end }}
