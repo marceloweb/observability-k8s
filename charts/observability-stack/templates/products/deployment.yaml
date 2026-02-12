@@ -1,0 +1,68 @@
+{{- if .Values.products.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.products.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.products.name "type" "application" "context" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.products.replicas }}
+  selector:
+    matchLabels:
+      {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.products.name "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.products.name "context" .) | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.products.service.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: products
+        image: "{{ .Values.products.image.repository }}:{{ .Values.products.image.tag }}"
+        imagePullPolicy: {{ include "observability-stack.imagePullPolicy" . }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.products.service.port }}
+          protocol: TCP
+        env:
+        {{- range $key, $value := .Values.products.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- if .Values.products.healthcheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.products.healthcheck.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.products.healthcheck.initialDelaySeconds }}
+          periodSeconds: {{ .Values.products.healthcheck.periodSeconds }}
+          timeoutSeconds: {{ .Values.products.healthcheck.timeoutSeconds }}
+          failureThreshold: {{ .Values.products.healthcheck.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.products.healthcheck.path }}
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        {{- end }}
+        resources:
+          {{- toYaml .Values.products.resources | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

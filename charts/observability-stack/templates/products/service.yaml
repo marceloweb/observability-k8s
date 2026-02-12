@@ -1,0 +1,22 @@
+{{- if .Values.products.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.products.name }}
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.componentLabels" (dict "component" .Values.products.name "type" "application" "context" .) | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "{{ .Values.products.service.port }}"
+    prometheus.io/path: "/metrics"
+spec:
+  type: {{ .Values.products.service.type }}
+  ports:
+  - port: {{ .Values.products.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "observability-stack.componentSelectorLabels" (dict "component" .Values.products.name "context" .) | nindent 4 }}
+{{- end }}

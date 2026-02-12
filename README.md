@@ -348,30 +348,9 @@ Para mais detalhes, consulte [docs/troubleshooting.md](docs/troubleshooting.md)
 - [Customização de Dashboards](docs/dashboards/)
 - [Helm Chart Values](charts/observability-stack/values.yaml)
 
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📝 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
 ## 👥 Autor
 
 - Marcelo Lopes Oliveira - [@marceloweb](https://www.linkedin.com/in/marceloweb/)
-
-## 🙏 Agradecimentos
-
-- [Grafana Labs](https://grafana.com/)
-- [Prometheus](https://prometheus.io/)
-- [OpenTelemetry](https://opentelemetry.io/)
-- Comunidade Kubernetes
 
 ---
 

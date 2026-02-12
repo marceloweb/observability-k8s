@@ -205,10 +205,14 @@ otelCollector:
           exporters: [debug, prometheus]
 
 #############################################
-# Gateway Service - Local development
+# Gateway Service - Docker Hub Image
 #############################################
 gateway:
   enabled: true
+  name: gateway
+  image:
+    repository: marceloweb/demo-gateway
+    tag: "1.0"
   replicas: 1
   
   service:
@@ -218,11 +222,11 @@ gateway:
   
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
   
   env:
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -230,34 +234,63 @@ gateway:
     OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
     PRODUCTS_SERVICE_URL: http://products:8081
   
+  healthcheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
   autoscaling:
     enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 #############################################
-# Products Service - Local development
+# Products Service - Docker Hub Image
 #############################################
 products:
   enabled: true
+  name: products
+  image:
+    repository: marceloweb/demo-products
+    tag: "1.0"
   replicas: 1
   
   service:
     type: ClusterIP
+    port: 8081
   
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
   
   env:
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     OTEL_SERVICE_NAME: products
     OTEL_RESOURCE_ATTRIBUTES: service.namespace=ecommerce-poc,environment=development
   
+  healthcheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
   autoscaling:
     enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 #############################################
 # Ingress - Disabled for local
